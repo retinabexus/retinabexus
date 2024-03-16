@@ -1,0 +1,38 @@
+#############################################################################
+# OBC2
+
+OBC2:
+  SET_TIME_OBC2: 
+    STATUS: 0
+  DELETE_FILES_OBC2:          # Delete files from MicroSD
+    STATUS: 0
+  REBOOT_TCP_OBC2: 
+    STATUS: 0
+  REBOOT_OBC2: 
+    STATUS: 0
+  SHUTDOWN_OBC2: 
+    STATUS: 0
+  OBC1_OFF: 
+    STATUS: 0
+  OBC1_OFF_ON: 
+    STATUS: 0
+  OBC2_OFF: 
+    STATUS: 0
+  OBC2_OFF_ON: 
+    STATUS: 0
+  PATCH_ON: 
+    STATUS: 0
+    CHANNEL: 17
+  PATCH_OFF: 
+    STATUS: 0
+    CHANNEL: 17
+  PIKSI_ON: 
+    STATUS: 0
+    CHANNEL: 27
+  PIKSI_OFF: 
+    STATUS: 0
+    CHANNEL: 27
+
+#############################################################################
+
+

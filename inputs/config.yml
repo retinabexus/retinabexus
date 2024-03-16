@@ -1,0 +1,79 @@
+#############################################################################
+# OBC2 CONFIGURATION FILE
+
+# Socket
+SOCKET:
+  IP_GS: "172.16.18.180" 
+  PORT_GS: 6060
+
+# Arduino
+NANO:
+  SERIAL_PORT: "/dev/ttyFT232R_USB_UART" 
+  BAUD_RATE:  9600
+
+# Piksi
+PIKSI:
+  SERIAL_PORT: "/dev/ttyPiksi_Multi" 
+  BAUD_RATE:  100000
+  VISUALIZER: False
+  CONFIG_LIST: ["imu imu_raw_output True", "imu mag_raw_output True"]
+  CPU_FREQ: 600
+  #CONFIG_LIST: ["simulator enabled False","imu imu_raw_output True","imu mag_raw_output True"]
+
+# INA
+INA:
+  SHUNT_OHMS : 0.1           # Shunt resistor of INA 219
+  MAX_EXPECTED_AMPS : 2.0    # Maximum current that is expected to be measured
+  ADDRESS : 0x40
+  BUSNUM : 1
+
+# Packets
+PACKETS:
+
+  TELEMETRY:
+    EXPERIMENT_ID: "ERRE"
+    PACKET_ID: "TEL"
+    TIMEOUT: 3.
+    BUFFERSIZE: 1024
+    SLEEPTIME: 3.0
+    ABS_PATH: "/home/pi/OBS2/outputs/"
+    FIELDNAMES: ['ID', 'Type', 'Number', 'Date', 'Raspberry CPU [°C]', 'Sensor Pressure [mbar]', 'Sensor Temperature [°C]', 
+                 'Temperature T0 [°C]', 'Temperature T1 [°C]', 'Temperature T2 [°C]', 'Temperature T3 [°C]', 'Temperature T4 [°C]', 
+                 'Voltage [V]', 'Current [mA]', 'Power [mW]']
+    DATA_LENGTH: 15
+    FILE_LENGTH: 216
+
+  PVT:
+    EXPERIMENT_ID: "ERRE"
+    PACKET_ID: "PVT"
+    TIMEOUT: 5.
+    BUFFERSIZE: 1024
+    SLEEPTIME: 0.1
+    ABS_PATH: "/home/pi/OBS2/outputs/"
+    FIELDNAMES: ['ID', 'Type', 'Number', 'Date', 'Latitude [deg]', 'Longitude [deg]', 'Height [m]', 
+                 'Posx [m]', 'Posy [m]', 'Posz [m]', 'Velx [mm/s]', 'Vely [mm/s]', 'Velz [mm/s]', 'nSats', 
+                 'Gyrx [deg/s]', 'Gyry [deg/s]', 'Gyrz [deg/s]', 'Magx [uT]', 'Magy [uT]', 'Magz [uT]', 'CPU Temperature [°C]']
+    DATA_LENGTH: 21
+    FILE_LENGTH: 216
+
+  COMMANDS:
+    EXPERIMENT_ID: "ERRE"
+    PACKET_ID: "CMD"
+    TIMEOUT: 10.
+    BUFFERSIZE: 128
+    FILENAME: "/home/pi/OBS2/outputs/commands.csv"
+    FIELDNAMES: ['ID', 'Type', 'Packet Number', 'Datetime', 'Command']
+    DATA_LENGTH: 5
+    
+  FEEDBACKS:
+    EXPERIMENT_ID: "ERRE"
+    PACKET_ID: "FDB"
+    TIMEOUT: 10.
+    BUFFERSIZE: 128
+    FILENAME: "/home/pi/OBS2/outputs/feedbacks.csv"
+    FIELDNAMES: ['ID', 'Type', 'Packet Number', 'Datetime', 'Feedback']
+    DATA_LENGTH: 5
+
+#############################################################################
+
+
