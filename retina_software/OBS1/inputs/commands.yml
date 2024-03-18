@@ -1,0 +1,74 @@
+#############################################################################
+# OBC1
+
+OBC1:
+  SET_TIME_OBC1: 
+    STATUS: 0
+  DELETE_FILES_OBC1:          # Delete files from SSD
+    STATUS: 0
+  REBOOT_TCP_OBC1: 
+    STATUS: 0
+  REBOOT_OBC1: 
+    STATUS: 0
+  SHUTDOWN_OBC1: 
+    STATUS: 0
+  RUN_CONFIG_1:
+    STATUS: 0
+  RUN_CONFIG_2:
+    STATUS: 0
+  STOP_CONFIG:
+    STATUS: 0
+
+#############################################################################
+# OBC2
+
+OBC2:
+  SET_TIME_OBC2: 
+    STATUS: 0
+  DELETE_FILES_OBC2:          # Delete files from MicroSD
+    STATUS: 0
+  REBOOT_TCP_OBC2: 
+    STATUS: 0
+  REBOOT_OBC2: 
+    STATUS: 0
+  SHUTDOWN_OBC2: 
+    STATUS: 0
+  PATCH_ON: 
+    STATUS: 0
+    CHANNEL: 11
+  PATCH_OFF: 
+    STATUS: 0
+    CHANNEL: 11
+  LNAS1_ON:                   # First line of LNAs
+    STATUS: 0
+    CHANNEL: 11             
+  LNAS1_OFF: 
+    STATUS: 0
+    CHANNEL: 11
+  LNAS2_ON:                   # Second line of LNAs
+    STATUS: 0
+    CHANNEL: 11              
+  LNAS2_OFF: 
+    STATUS: 0
+    CHANNEL: 11
+  PIKSI_ON: 
+    STATUS: 0
+    CHANNEL: 11
+  PIKSI_OFF: 
+    STATUS: 0
+    CHANNEL: 11
+  NANO_ON:                    # Nano, thermistors and sensors
+    STATUS: 0
+    CHANNEL: 11              
+  NANO_OFF: 
+    STATUS: 0
+    CHANNEL: 11
+  OBC1_ON: 
+    STATUS: 0
+    CHANNEL: 11
+  OBC1_OFF: 
+    STATUS: 0
+    CHANNEL: 11
+
+#############################################################################
+
