@@ -14,8 +14,9 @@ while True:
             client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             # Connect to GS
             print(f"\n[RETINA] Connecting ...")
-            # TODO: add timeout
+            client.settimeout(10)
             client.connect(addr)
+            client.settimeout(None)
         except socket.error as error:
             print(f"\n[RETINA] Connection to GS failed")
             print(f"\n[RETINA] Error: {error}")
@@ -28,7 +29,10 @@ while True:
     try:
         # Receive data
         print(f"\n[RETINA] Waiting for a message from GS")
+        client.settimeout(200)
         data = client.recv(BUFFERSIZE).decode("utf-8")
+        client.settimeout(None)
+        # TODO: isconnected?
         ######## do something #########
         print(f"\n[RETINA] Message received from GS: {addr}")
         print(f"\n[RETINA] Message received: {data}")
