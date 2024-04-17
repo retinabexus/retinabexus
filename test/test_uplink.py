@@ -33,13 +33,13 @@ while True:
         data = client.recv(BUFFERSIZE).decode("utf-8")
         client.settimeout(None)
         # TODO: isconnected?
-        ######## do something #########
+        ######## do something with the received message #########
         print(f"\n[RETINA] Message received from GS: {addr}")
         print(f"\n[RETINA] Message received: {data}")
         # TODO: define message structure, add some checks to the message, send an echo to GS
         if data:
             client.send(b'0')
-        ######## do something #########
+        ######## do something with the received message #########
     except Exception as error:
         print(f"\n[RETINA] Error receiving message: {error}")
         print(f"\n[RETINA] Trying to restore connection")
