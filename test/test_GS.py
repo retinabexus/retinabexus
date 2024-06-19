@@ -3,7 +3,7 @@ import threading
 from time import sleep
 
 GS_ADDRESS = '169.254.19.15' 
-GS_PORT = 5000  
+GS_PORT = 123  
 
 def handle_client(client):
 
