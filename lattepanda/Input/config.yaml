@@ -1,0 +1,51 @@
+# OBC2 CONFIGURATION FILE
+
+# SERIAL
+SERIAL:
+  PORT_OBC1: "172.16.18.180"
+
+# EXPERIMENTS
+EXPERIMENT:
+  
+  AI:
+    PACKET_COUNTER: 1
+    SAMPLE_TIME: 0
+    SAMPLING_RATE: 1
+    BAUDRATE: 115200
+    TIMEOUT: 10000
+    EXCEPTIONS: 
+  GNSS:
+    PACKET_COUNTER: 1
+
+# Packets
+PACKETS:
+
+  AI:
+    ABS_PATH: "C:\\Users\\Lorenzo\\Desktop\\retina_software\\lattepanda\\Output\\"
+    FIELDNAMES: ['ID', 'Type', 'Number', 'Datetime [UTC]', 'GyroX [rad/s]', 'GyroY [rad/s]', 'GyroZ [rad/s]', 
+                      'AccX [m/s^2]', 'AccY [m/s^2]', 'AccZ [m/s^2]', 'MagX', 'MagY', 'MagZ', 'q0', 'q1', 'q2', 'q3']
+    FILE_LENGTH: 10000
+
+  GNSS:
+    ABS_PATH: "C:\\Users\\Lorenzo\\Desktop\\retina_software\\lattepanda\\Output\\"
+    FIELDNAMES: ['ID', 'Type', 'Number', 'Datetime [UTC]', 'Carrier phase 1', 'Pseudorange 1', 'Doppler 1', 
+                      'Carrier phase 2', 'Pseudorange 2', 'Doppler 2', 'Latitude', 'Longitude', 'Altitude']
+    FILE_LENGTH: 10000
+
+  COMMANDS:
+    EXPERIMENT_ID: "RET"
+    PACKET_ID: "CMD"
+    ABS_PATH: "C:\\Users\\Lorenzo\\Desktop\\retina_software\\lattepanda\\Output\\"
+    FIELDNAMES: ['ID', 'Type', 'Packet Number', 'Datetime', 'Command']
+    DATA_LENGTH: 5
+    
+  FEEDBACKS:
+    EXPERIMENT_ID: "ERRE"
+    PACKET_ID: "FDB"
+    TIMEOUT: 10.
+    BUFFERSIZE: 128
+    FILENAME: "/home/pi/OBS2/outputs/feedbacks.csv"
+    FIELDNAMES: ['ID', 'Type', 'Packet Number', 'Datetime', 'Feedback']
+    DATA_LENGTH: 5
+
+

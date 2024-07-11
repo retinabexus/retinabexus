@@ -52,9 +52,9 @@ def start_server():
             # Handle the client in a separate thread
             client_thread = threading.Thread(target=handle_client, args=(client_socket,))
             client_thread.start()
-            while True:
-                print('\nSono qui mentre eseguo il thread')
-                sleep(5)
+            #while True:
+            #    print('\nSono qui mentre eseguo il thread')
+            #    sleep(5)
     except Exception as e:
         print(f"[GS] Error starting server: {e}")
     finally:
