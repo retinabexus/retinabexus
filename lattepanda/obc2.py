@@ -1,12 +1,15 @@
 import sys, os, yaml
 
+import functions      as fn
 import numpy          as np
 import xsensdeviceapi as xda
+import serial
 
 from threading import Lock
 from time      import sleep
 from csv       import DictWriter, writer
 from utils     import csvstring, packetstring
+
 
 class XdaCallback(xda.XsCallback):
     def __init__(self, max_buffer_size = 5):
@@ -30,7 +33,7 @@ class XdaCallback(xda.XsCallback):
 
     def onLiveDataAvailable(self, dev, packet):
         self.m_lock.acquire()
-        assert(packet is not 0)
+        assert(packet != 0)
         while len(self.m_packetBuffer) >= self.m_maxNumberOfPacketsInBuffer:
             self.m_packetBuffer.pop()
         self.m_packetBuffer.append(xda.XsDataPacket(packet))
@@ -39,8 +42,8 @@ class XdaCallback(xda.XsCallback):
 def runAI():
 
     # Open configuration file
-    with open('C:\\Users\\Lorenzo\\Desktop\\retina_software\\lattepanda\\config.yaml') as d: config = yaml.full_load(d)
-    with open('C:\\Users\\Lorenzo\\Desktop\\retina_software\\lattepanda\\Input\\commands.yaml') as d: commands = yaml.full_load(d)
+    with open('/home/retina/Desktop/retinabexus/lattepanda/Input/config.yaml') as d: config = yaml.full_load(d)
+    with open('/home/retina/Desktop/retinabexus/lattepanda/Input/commands.yaml') as d: commands = yaml.full_load(d)
 
     # Configure CSV file ------------------------------------------- #
 
@@ -52,10 +55,10 @@ def runAI():
     csvfiles = [f for f in sorted(os.listdir(pathout))]
     # Count csv files
     if len(csvfiles) == 0: 
-        countfile = 0
+        countfile = 1
     else:
         lastfile = csvfiles[-1]
-        countfile = int(lastfile.split('.')[0][-4:])
+        countfile = int(lastfile.split('.')[0][-4:])+1
     # Create csv file
     filename   = pathout + 'AIpacket_%04i'%int(countfile) + '.csv'
     # Write header
@@ -66,7 +69,7 @@ def runAI():
 
     # Start loop
     # TODO: mettere qualche condizione, magari derivante dai telecomandi da terra   
-    while not (commands.shutdown or commands.reboot):
+    while True:
 
         # Configure IMU ------------------------------------------------- #
 
@@ -105,8 +108,7 @@ def runAI():
             print("Scanning for devices...")
 
             # Qui si potrebbe mettere il baud rate ESEMPIO: baudrate = XBR_9600 default 115200
-            portInfoArray = xda.XsScanner_scanPorts(singleScanTimeout = timeout, ignoreNonXsensDevices = True)
-
+            portInfoArray =  xda.XsScanner_scanPorts()
             # Find an MTi device
             while not found:
                 # Qui si potrebbe mettere il baud rate ESEMPIO: baudrate = XBR_9600 default 115200
@@ -278,8 +280,8 @@ def runAI():
                     except:
                         raise RuntimeError("Failed writing csv")
                     
-                    if (commands.shutdown or commands.reboot):
-                        stoprecording = True
+                    #if (commands.shutdown or commands.reboot):
+                    #    stoprecording = True
                     # ----------------------------------------------------------------------------------- #
             print("\nStopping recording...")
             if not device.stopRecording():
@@ -326,8 +328,8 @@ def runAI():
 
 def runGNSS():
 
-    with open('C:\\Users\\Lorenzo\\Desktop\\retina_software\\lattepanda\\Input\\config.yaml') as d: config = yaml.full_load(d)
-    with open('C:\\Users\\Lorenzo\\Desktop\\retina_software\\lattepanda\\Input\\commands.yaml') as d: commands = yaml.full_load(d)
+    with open('/home/retina/Desktop/retinabexus/lattepanda/Input/config.yaml') as d: config = yaml.full_load(d)
+    with open('/home/retina/Desktop/retinabexus/lattepanda/Input/commands.yaml') as d: commands = yaml.full_load(d)
 
     packet_counter = config['EXPERIMENT']['GNSS']['PACKET_COUNTER']
     exceptions = 0
@@ -336,82 +338,78 @@ def runGNSS():
     # Configure CSV file ------------------------------------------- #
 
     # Config
-    header   = config['PACKETS']['GNSS']['FIELDNAMES']
     pathout  = config['PACKETS']['GNSS']['ABS_PATH']
     maxlines = config['PACKETS']['GNSS']['FILE_LENGTH']
     # Search for csv files
     csvfiles = [f for f in sorted(os.listdir(pathout))]
     # Count csv files
     if len(csvfiles) == 0: 
-        countfile = 0
+        countfile = 1
     else:
         lastfile = csvfiles[-1]
-        countfile = int(lastfile.split('.')[0][-4:])
+        countfile = int(lastfile.split('.')[0][-4:]) + 1
     # Create csv file
     filename = pathout + 'GNSSpacket_%04i'%int(countfile) + '.csv'
     # Write header
-    with open(filename, mode='a', newline='') as file:
-        # Create a writer object
-        writer(file).writerow(header)
-        file.close()
+    #with open(filename, mode='a', newline='') as file:
+    #    # Create a writer object
+    #    writer(file).writerow(header)
+    #    file.close()
         
-        # Configure GNSS ------------------------------------------------- #
+    # Configure GNSS ------------------------------------------------- #
+    port     = config['EXPERIMENT']['GNSS']['PORT']
+    baudrate = config['EXPERIMENT']['GNSS']['BAUDRATE']
+    timeout  = config['EXPERIMENT']['GNSS']['TIMEOUT']
 
-        # Use GNSS
+    ser = serial.Serial(port, baudrate, timeout=0)
 
-        while not (commands.shutdown or commands.reboot):
-            sleep(1)
-            # Write CSV
-            try:
-                stoprecording = False
-                while not stoprecording:
-                    config['EXPERIMENT']['GNSS']['PACKET_COUNTER'] = packet_counter
+    commands = ['obsvma 2', 'obsvha 2','galepha 2', 'gloepha 2', 'gpsepha 2', 'bdsepha 2']
+    
+    for command in commands:
+        sleep(2)
+        ser.write(command.encode('utf-8') + b'\n')  # Aggiungi '\r\n' per inviare CR LF
 
-                    carrier1 = 0
-                    pseudo1  = 0
-                    doppler1 = 0
-                    carrier2 = 0
-                    pseudo2  = 0
-                    doppler2 = 0
-                    lat = 0
-                    lon = 0
-                    alt = 0
-                    input_data = [carrier1, pseudo1, doppler1, carrier2, pseudo2, doppler2]
-                    output_data = [lat,lon,alt]
-                    try:
-                        if (packet_counter%maxlines) == 0:
-                            # Create a new file
-                            countfile += 1
-                            filename   = pathout + 'GNSSpacket_%04i'%int(countfile) + '.csv'
-                            # Create header
-                            with open(filename, mode='a', newline='') as file:
-                                # Create a writer object
-                                writer(file).writerow(header)
-                                file.close()
-                        # write csv
-                        data = csvstring(input_data, output_data, packet_counter, exp)
-                        with open(filename, mode='a', newline='') as file:
-                            # Create a writer object
-                            DictWriter(file, fieldnames=header).writerows(data)
-                            file.close()
-                    except:
-                        raise RuntimeError("Failed writing csv")
-                    packet_counter += 1
-                    
-            except RuntimeError as error:
-                a=1
-                print(error)
+        #fn.send_serial_command(ser, command)
+
+    # Use GNSS ------------------------------------------------------- #
+    while True:
+        sleep(1)
+        print("Start acquisition\n")
+        try:
+            # Read serial port ------------------------------------------------------------- #
+            line = ser.readline().strip()
+
+            if line:
+                # Write CSV ---------------------------------------------------------------- #
+                try:
+                    if (packet_counter%maxlines) == 0:
+                        # Create a new file
+                        countfile += 1
+                        filename   = pathout + 'GNSSpacket_%04i'%int(countfile) + '.csv'
+
+                    # write csv
+                    with open(filename, mode='a') as file:
+                        # Create a writer object
+                        writer(file).writerow([line.decode("utf-8").replace('\00',"")])
+                        #file.close()
+                except:
+                    raise RuntimeError("Failed writing csv")
+                packet_counter += 1
                 
-            except: 
+        except RuntimeError as error:
+            exceptions += 1
+            sleep(5)
+            print(error)
+            
+        except: 
+            exceptions += 1
+            sleep(5)
+            print("An unknown fatal error has occured. Aborting.")
 
-                print("An unknown fatal error has occured. Aborting.")
-
-                exceptions    += 1 
-
-                if exceptions == 10:
-                    sys.exit(1)
-                    #reset
+        if exceptions == 10:
+            sys.exit(1)
+            #reset
 
 
 if __name__ == '__main__':
-    runAI()
+    runGNSS()

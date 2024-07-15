@@ -16,26 +16,30 @@ EXPERIMENT:
     EXCEPTIONS: 
   GNSS:
     PACKET_COUNTER: 1
+    PORT: "/dev/ttyUSB2"
+    BAUDRATE: 115200
+    TIMEOUT: 10
 
 # Packets
 PACKETS:
 
   AI:
-    ABS_PATH: "C:\\Users\\Lorenzo\\Desktop\\retina_software\\lattepanda\\Output\\"
+    ABS_PATH: "/home/retina/Desktop/retinabexus/lattepanda/Output/AI/"
     FIELDNAMES: ['ID', 'Type', 'Number', 'Datetime [UTC]', 'GyroX [rad/s]', 'GyroY [rad/s]', 'GyroZ [rad/s]', 
                       'AccX [m/s^2]', 'AccY [m/s^2]', 'AccZ [m/s^2]', 'MagX', 'MagY', 'MagZ', 'q0', 'q1', 'q2', 'q3']
     FILE_LENGTH: 10000
 
   GNSS:
-    ABS_PATH: "C:\\Users\\Lorenzo\\Desktop\\retina_software\\lattepanda\\Output\\"
+    ABS_PATH: "/home/retina/Desktop/retinabexus/lattepanda/Output/GNSS/"
     FIELDNAMES: ['ID', 'Type', 'Number', 'Datetime [UTC]', 'Carrier phase 1', 'Pseudorange 1', 'Doppler 1', 
                       'Carrier phase 2', 'Pseudorange 2', 'Doppler 2', 'Latitude', 'Longitude', 'Altitude']
     FILE_LENGTH: 10000
 
+
   COMMANDS:
     EXPERIMENT_ID: "RET"
     PACKET_ID: "CMD"
-    ABS_PATH: "C:\\Users\\Lorenzo\\Desktop\\retina_software\\lattepanda\\Output\\"
+    ABS_PATH: "/home/retina/Desktop/retinabexus/lattepanda/Output"
     FIELDNAMES: ['ID', 'Type', 'Packet Number', 'Datetime', 'Command']
     DATA_LENGTH: 5
     
