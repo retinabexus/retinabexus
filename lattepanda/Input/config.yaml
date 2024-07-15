@@ -16,7 +16,7 @@ EXPERIMENT:
     EXCEPTIONS: 
   GNSS:
     PACKET_COUNTER: 1
-    PORT: "/dev/ttyUSB2"
+    PORT: "/dev/ttyUSB0"
     BAUDRATE: 115200
     TIMEOUT: 10
 

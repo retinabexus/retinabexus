@@ -1,12 +1,13 @@
 from threading import Thread
 from obc2 import runAI, runGNSS
 import yaml
+import multiprocessing
 
 if __name__ == "__main__":
     
     # Config threads
-    thread_GNSS = Thread(target = runGNSS, args = ())
-    thread_AI   = Thread(target = runAI, args = ())
+    thread_GNSS = multiprocessing.Process(target = runGNSS, args = ())
+    thread_AI   = multiprocessing.Process(target = runAI, args = ())
     #thread_uplink = Thread(target = uplink, args =())
     #thread_downlink = Thread(target = downlink, args = ())
 
