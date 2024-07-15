@@ -410,4 +410,4 @@ def runGNSS():
 
 
 if __name__ == '__main__':
-    runAI()
+    runGNSS()
