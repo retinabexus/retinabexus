@@ -10,13 +10,18 @@ EXPERIMENT:
   AI:
     PACKET_COUNTER: 1
     SAMPLE_TIME: 0
-    SAMPLING_RATE: 1
+    SAMPLING_RATE: 10
     BAUDRATE: 115200
     TIMEOUT: 10000
-    EXCEPTIONS: 
+    PORT: "/dev/ttyUSB0"
+    WDT: 10
+    EXCEPTIONS: 0
+    SEQUENCE_LENGTH: 50
+    MODEL_PATH: /home/retina/Desktop/retinabexus/lattepanda/Input/intero_modello_trainvalimix_100hs_2nl_100sl_lr3_wd5_drop4_batch128.pt
+    SCALER_PATH: /home/retina/Desktop/retinabexus/lattepanda/Input/scaler_trainvalimix_100hs_2nl_100sl_lr3_wd5_drop4_batch128.pkl
   GNSS:
     PACKET_COUNTER: 1
-    PORT: "/dev/ttyUSB0"
+    PORT: "/dev/ttyUSB1"
     BAUDRATE: 115200
     TIMEOUT: 10
 
@@ -26,7 +31,7 @@ PACKETS:
   AI:
     ABS_PATH: "/home/retina/Desktop/retinabexus/lattepanda/Output/AI/"
     FIELDNAMES: ['ID', 'Type', 'Number', 'Datetime [UTC]', 'GyroX [rad/s]', 'GyroY [rad/s]', 'GyroZ [rad/s]', 
-                      'AccX [m/s^2]', 'AccY [m/s^2]', 'AccZ [m/s^2]', 'MagX', 'MagY', 'MagZ', 'q0', 'q1', 'q2', 'q3']
+                      'AccX [m/s^2]', 'AccY [m/s^2]', 'AccZ [m/s^2]', 'MagX', 'MagY', 'MagZ', 'q0', 'q1', 'q2', 'q3', 'qe0', 'qe1', 'qe2', 'qe3']
     FILE_LENGTH: 10000
 
   GNSS:
@@ -36,20 +41,9 @@ PACKETS:
     FILE_LENGTH: 10000
 
 
-  COMMANDS:
-    EXPERIMENT_ID: "RET"
-    PACKET_ID: "CMD"
-    ABS_PATH: "/home/retina/Desktop/retinabexus/lattepanda/Output"
-    FIELDNAMES: ['ID', 'Type', 'Packet Number', 'Datetime', 'Command']
-    DATA_LENGTH: 5
+  UPLINK:
+    PORT: "/dev/ttyUSB0"
+    BAUDRATE: 115200
     
   FEEDBACKS:
-    EXPERIMENT_ID: "ERRE"
-    PACKET_ID: "FDB"
-    TIMEOUT: 10.
-    BUFFERSIZE: 128
-    FILENAME: "/home/pi/OBS2/outputs/feedbacks.csv"
-    FIELDNAMES: ['ID', 'Type', 'Packet Number', 'Datetime', 'Feedback']
-    DATA_LENGTH: 5
-
-
+    FILE_PATH: "/home/retina/Desktop/retinabexus/lattepanda/Output/feedbacks.txt"

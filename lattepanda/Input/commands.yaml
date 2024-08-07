@@ -2,9 +2,8 @@
 
 
 COMMANDS:
-  SHUTDOWN: 0
-  REBOOT: 0
-
+  INNER:
+    REBOOT: /home/retina/Desktop/retinabexus/lattepanda/Commands/reboot_lattepanda.sh
 
 
 

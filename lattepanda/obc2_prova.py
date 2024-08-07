@@ -378,6 +378,7 @@ def runGNSS():
             line = ser.readline().strip()
 
             if line:
+                print(line)
                 # Write CSV ---------------------------------------------------------------- #
                 try:
                     if (packet_counter%maxlines) == 0:
@@ -407,7 +408,6 @@ def runGNSS():
         if exceptions == 10:
             sys.exit(1)
             #reset
-
 
 if __name__ == '__main__':
     runGNSS()

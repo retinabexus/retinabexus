@@ -1,3 +1,16 @@
+import time
+import datetime
+
+
+def log_message(message):
+    current_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    log_message = f"[{current_time}] {message}"
+    return log_message
+
+def write_log(log, filepath):
+    with open(filepath, 'a') as file:  # 'a' mode opens the file for appending
+        file.write(log + '\n')
+
 def csvstring(input_data, output_data, ii, exp):
 
     if exp == 'AI':
@@ -13,19 +26,24 @@ def csvstring(input_data, output_data, ii, exp):
         my = input_data[7]
         mz = input_data[8]
         timeutc = input_data[9]
+        q0 = input_data[10]
+        q1 = input_data[11]
+        q2 = input_data[12]
+        q3 = input_data[13]
 
         # Get quaternions
-        q0 = output_data[0]
-        q1 = output_data[1]
-        q2 = output_data[2]
-        q3 = output_data[3]
+        qe0 = output_data[0]
+        qe1 = output_data[1]
+        qe2 = output_data[2]
+        qe3 = output_data[3]
         
         data = [
             {'ID': 'RET', 'Type': 'ATT', 'Number': ii, 'Datetime [UTC]': timeutc,
             'GyroX [rad/s]': gx , 'GyroY [rad/s]': gy, 'GyroZ [rad/s]': gz,
             'AccX [m/s^2]': ax, 'AccY [m/s^2]': ay, 'AccZ [m/s^2]': az, 
-            'MagX': mx, 'MagY': my, 'MagZ': mz, 
-            'q0': q0, 'q1': q1, 'q2': q2, 'q3': q3}
+            'MagX': mx, 'MagY': my, 'MagZ': mz, 'q0': q0, 'q1': q1, 'q2': q2, 'q3': q3,
+            'qe0': qe0, 'qe1': qe1, 'qe2': qe2, 'qe3': qe3,
+            }
         ]
 
     elif exp == 'GNSS':
@@ -98,6 +116,20 @@ def packetstring(input_data, output_data, ii, exp):
         merge = ['RET',exp,ii,timeutc,carrier1,pseudo1,doppler1,carrier2,pseudo2,doppler2,lat,lon,alt]
 
     return data
+
+def send_data(data,ser):
+    if ser.is_open:
+        ser.write(data.encode())  # Send data
+        print(f"Sent: {data}")
+
+def receive_data(ser):
+    if ser.is_open:
+        while True:
+            data = ser.readline().decode()  # Read data
+            if data:
+                print(f"Received: {data}")
+                break
+            time.sleep(0.1)
 
 class commandHandling:
 
