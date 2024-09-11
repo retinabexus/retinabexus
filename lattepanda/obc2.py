@@ -1,6 +1,5 @@
 import sys, os, yaml
 
-import functions      as fn
 import numpy          as np
 import xsensdeviceapi as xda
 import serial
@@ -8,12 +7,14 @@ import torch
 import pickle
 
 from sklearn.preprocessing import StandardScaler
-from datetime  import datetime, timezone
-from threading import Lock
-from time      import sleep, time
-from csv       import DictWriter, writer
-from utils     import csvstring, packetstring, receive_data, send_data, log_message, write_log
-from utils_AI  import*
+from datetime   import datetime, timezone
+from threading  import Lock
+from time       import sleep, time
+from csv        import DictWriter, writer
+from utils      import csvstring, packetstring, log_message, write_log
+from utils_AI   import*
+from utils_GNSS import*
+from telecommands import send_data, exec_cmd
 
 
 class XdaCallback(xda.XsCallback):
@@ -44,7 +45,7 @@ class XdaCallback(xda.XsCallback):
         self.m_packetBuffer.append(xda.XsDataPacket(packet))
         self.m_lock.release()
 
-def getIMU(packet):
+def getIMU(packet, epoch):
     
     # Init lists
     acc, gyr, mag, quat = [], [], [], []
@@ -83,7 +84,6 @@ def getIMU(packet):
     # Get time TODO: epoca iniziale
     if packet.containsUtcTime():
         imu_unix = packet.utcTime()  
-        epoch    = time()
         utc_dt   = datetime(imu_unix.m_year, imu_unix.m_month, imu_unix.m_day, imu_unix.m_hour, imu_unix.m_minute, imu_unix.m_second,int(imu_unix.m_nano/1000), tzinfo=timezone.utc)
         unix_dt  = utc_dt.timestamp()
         imu_unix = epoch + unix_dt
@@ -92,12 +92,7 @@ def getIMU(packet):
     input_data = [gyr[0], gyr[1], gyr[2], acc[0], acc[1], acc[2], mag[0], mag[1], mag[2], imu_unix, quat[0], quat[1], quat[2], quat[3]]
     return input_data
 
-def runAI():
-
-    # Read configuration file
-    with open('/home/retina/Desktop/retinabexus/lattepanda/Input/config.yaml','r') as d: config = yaml.full_load(d)
-    # Read configuration file
-    with open('/home/retina/Desktop/retinabexus/lattepanda/Input/commands.yaml','r') as d: commands = yaml.full_load(d)
+def runAI(config, commands):
 
     # Configure output files ------------------------------------------------------------- #
 
@@ -130,6 +125,13 @@ def runAI():
     # TODO: mettere qualche condizione, magari derivante dai telecomandi da terra   
     while True:
 
+        # Configure link ----------------------------------------------- #
+        port_link    = config['PACKETS']['LINK']['PORT']
+        baud_link    = config['PACKETS']['LINK']['BAUDRATE']
+        timeout_link = config['PACKETS']['LINK']['TIMEOUT']
+
+        ser = serial.Serial(port_link, baud_link)
+                         
         # Configure AI ------------------------------------------------- #
         seq_len        = config['EXPERIMENT']['AI']['SEQUENCE_LENGTH']
         model          = config['EXPERIMENT']['AI']['MODEL_PATH']
@@ -282,6 +284,7 @@ def runAI():
             buffer_seq = []
             # Recording loop
             while not stoprecording:
+                epoch = time.time()
                 if callback.packetAvailable():
                     # Retrieve a packet
                     #imu_unix = xda.XsTimeStamp_nowMs()
@@ -289,8 +292,9 @@ def runAI():
                     # Get packet number
                     npacket_current = packet.packetCounter()
                     npacket_all     = npacket_current + packet_counter
-                    # Get measurements
-                    input_data = getIMU(packet)
+                    # Get measurements TODO: IRROBUSTIRE
+                    input_data = getIMU(packet, epoch)
+                    # TODO: controllo su dati presenti e mettere nan altrimenti
 
                     # Init sequence
                     if count < seq_len:
@@ -299,12 +303,11 @@ def runAI():
                     else:
                         buffer_seq.pop(0)
                         buffer_seq.append(input_data)
-
+                    # -------------------------------- AI ----------------------------------------------- #
                     if len(buffer_seq) == seq_len:
                         inputAI = [row[:6] for row in buffer_seq]
-                        # -------------------------------- AI ----------------------------------------------- #
+                        
                         y = AI(inputAI,loaded_model,loaded_scaler)
-                        # Do some stuff with AI
                         q0, q1, q2, q3 = y[0,0], y[0,1], y[0,2], y[0,3]
                         output_data = [q0, q1 ,q2, q3]
                     else:
@@ -328,18 +331,20 @@ def runAI():
                             # send to udoo
                             try:
                                 data_udoo = packetstring(input_data, output_data, npacket_all, exp)
-                                a = 1
+                                send_data(data_udoo,ser)
                             except:
-                                print('Failed to send packet to udoo')                        
+                                message = 'Failed sending data to OBC1'
+                                print(message)
+                                write_log(log_message(message), pathfb)                        
                     except:
                         raise RuntimeError("Failed writing csv")
                 else:
                     # Watchdog timer in case of absence of packets
-                    starttimer = time()
+                    starttimer = time.time()
                     while True:
                         if callback.packetAvailable():
                             break
-                        elif time() - starttimer > wdt:
+                        elif time.time() - starttimer > wdt:
                             raise RuntimeError("Connection lost")
                                       
             message = "Stop recording..."
@@ -368,142 +373,63 @@ def runAI():
         except RuntimeError as error:
             print(error)
             write_log(log_message(error), pathfb)
+            # Close port
             if control != 0:
-                # Close port
-                print("Closing port...")
                 control.closePort(mtPort.portName())
-                # Close XsControl object
-                print("Closing XsControl object...")
                 control.close()
             sleep(10)
             exceptions += 1
 
-            # Watchdog to reboot after 10 exceptions TODO: fun
             if exceptions == 10:
-                # Send info to ground
+               # TODO: Send info to ground
+                message = "Reached maximum number of exceptions"
+                print(message)
+                write_log(log_message(message), pathfb)
                 sleep(60*5)
                 # Reboot
                 message = "Automatic reboot in progress"
                 print(message)
                 write_log(log_message(message), pathfb)
-                reboot = commands['COMMANDS']['INNER']['REBOOT']
-                cmd = 'sudo %s'% reboot
-                os.system(cmd)
+                exec_cmd(commands)
+
         except:
             message  = "An unknown fatal error has occured"
             print(message)
             write_log(log_message(message), pathfb)
+            # Close port
             if control != 0:
-                # Close port
-                print("Closing port...")
                 control.closePort(mtPort.portName())
-                # Close XsControl object
-                print("Closing XsControl object...")
                 control.close()
             sleep(10)
             exceptions += 1 
 
             # Watchdog to reboot after 10 exceptions TODO: fun
             if exceptions == 10:
-                # Send info to ground
+                # TODO: Send info to ground
+                message = "Reached maximum number of exceptions"
+                print(message)
+                write_log(log_message(message), pathfb)
                 sleep(60*5)
                 # Reboot
                 message = "Automatic reboot in progress"
                 print(message)
                 write_log(log_message(message), pathfb)
-                reboot = commands['COMMANDS']['INNER']['REBOOT']
-                cmd = 'sudo %s'% reboot
-                os.system(cmd)
+                exec_cmd(commands)
         else:
             print("Successful exit.")
 
-def runGNSS2():
-
-    # Read configuration file
-    with open('/home/retina/Desktop/retinabexus/lattepanda/Input/config.yaml') as d: config = yaml.full_load(d)
-    # Read commands file
-    with open('/home/retina/Desktop/retinabexus/lattepanda/Input/commands.yaml') as d: commands = yaml.full_load(d)
+def runGNSS(config, commands):
 
     packet_counter = config['EXPERIMENT']['GNSS']['PACKET_COUNTER']
     exceptions = 0
     exp = 'GNSS'
 
-    # Configure CSV file ------------------------------------------- #
+    # Configure link ----------------------------------------------- #
+    port_link    = config['PACKETS']['LINK']['PORT']
+    baud_link    = config['PACKETS']['LINK']['BAUDRATE']
+    timeout_link = config['PACKETS']['LINK']['TIMEOUT']
 
-    # Config
-    pathout  = config['PACKETS']['GNSS']['ABS_PATH']
-    maxlines = config['PACKETS']['GNSS']['FILE_LENGTH']
-    # Search for csv files
-    csvfiles = [f for f in sorted(os.listdir(pathout))]
-    # Count csv files
-    if len(csvfiles) == 0: 
-        countfile = 1
-    else:
-        lastfile = csvfiles[-1]
-        countfile = int(lastfile.split('.')[0][-4:]) + 1
-    # Create csv file
-    filename = pathout + 'GNSSpacket_%04i'%int(countfile) + '.csv'
-    # Write header
-    #with open(filename, mode='a', newline='') as file:
-    #    # Create a writer object
-    #    writer(file).writerow(header)
-    #    file.close()
-        
-    # Configure GNSS ------------------------------------------------- #
-    port     = config['EXPERIMENT']['GNSS']['PORT']
-    baudrate = config['EXPERIMENT']['GNSS']['BAUDRATE']
-    timeout  = config['EXPERIMENT']['GNSS']['TIMEOUT']
-
-    ser = serial.Serial('/dev/ttyACM1', baudrate, timeout=1)
-
-    # Use GNSS ------------------------------------------------------- #
-    print("Start acquisition\n")
-    while True:
-        sleep(1)
-        
-        try:
-            # Read serial port ------------------------------------------------------------- #
-            line = ser.readline().strip()
-
-            if line:
-                print(line)
-                # Write CSV ---------------------------------------------------------------- #
-                try:
-                    if (packet_counter%maxlines) == 0:
-                        # Create a new file
-                        countfile += 1
-                        filename   = pathout + 'GNSSpacket_%04i'%int(countfile) + '.csv'
-
-                    # write csv
-                    with open(filename, mode='a') as file:
-                        # Create a writer object
-                        writer(file).writerow([line.decode("utf-8").replace('\00',"")])
-                        #file.close()
-                except:
-                    raise RuntimeError("Failed writing csv")
-                packet_counter += 1
-                
-        except RuntimeError as error:
-            exceptions += 1
-            sleep(5)
-            print(error)
-            
-        except: 
-            exceptions += 1
-            sleep(5)
-            print("An unknown fatal error has occured. Aborting.")
-
-        if exceptions == 10:
-            sys.exit(1)
-            #reset
-def runGNSS():
-
-    # Read configuration file
-    with open('/home/retina/Desktop/retinabexus/lattepanda/Input/config.yaml') as d: config = yaml.full_load(d)
-
-    packet_counter = config['EXPERIMENT']['GNSS']['PACKET_COUNTER']
-    exceptions = 0
-    exp = 'GNSS'
+    ser = serial.Serial(port_link, baud_link)
 
     # Configure output files ----------------------------------------- #
 
@@ -522,32 +448,30 @@ def runGNSS():
         countfile = int(lastfile.split('.')[0][-4:]) + 1
     # Create csv file
     filename = pathout + 'GNSSpacket_%04i'%int(countfile) + '.csv'
-    # Write header
-    #with open(filename, mode='a', newline='') as file:
-    #    # Create a writer object
-    #    writer(file).writerow(header)
-    #    file.close()
     
     while True:
 
         try:
+
             # Configure GNSS ------------------------------------------------- #
 
             message = "Starting GNSS cofiguration..."
             print(message)
             write_log(log_message(message), pathfb)
+
             port     = config['EXPERIMENT']['GNSS']['PORT']
             baudrate = config['EXPERIMENT']['GNSS']['BAUDRATE']
             timeout  = config['EXPERIMENT']['GNSS']['TIMEOUT']
 
             sleep(10)
 
-            ser = serial.Serial(port, baudrate, timeout=1)
+            # Open serial
+            serGNSS = serial.Serial(port, baudrate)
 
-            if ser.isOpen():
-                tosend = ['obsvma 0.5', 'obsvha 0.5','galepha 0.5', 'gloepha 0.5', 'gpsepha 0.5', 'bdsepha 0.5']
+            if serGNSS.isOpen():
+                tosend = ['obsvma 1', 'obsvha 1', 'bestnava 5', 'bestnavha 5', 'galepha 1', 'gloepha 1', 'gpsepha 1', 'bdsepha 1']
                 for c in tosend:
-                    ser.write(c.encode('utf-8') + b'\r\n')
+                    serGNSS.write(c.encode('utf-8') + b'\r\n')
             
                 # TODO: read response and check config
                 if True:
@@ -560,16 +484,67 @@ def runGNSS():
                 raise RuntimeError("Port is not opened")
 
             # Use GNSS ------------------------------------------------------- #
-            print("Start acquisition\n")
+
+            master_packets = []
+            slave_packets  = []
+            sow_old = ""
+            f_old   = ""
+            i   = 0
+            ii  = 0
+            iii = 0
+            npacketgnss = 0
+            pacchettone = []
+
+            print("Start GNSS acquisition\n")
+            print(message)
+            write_log(log_message(message), pathfb)
             while True:
-                
-                try:
-                    # Read serial port ------------------------------------------------------------- #
-                    line = ser.readline().strip()
-                except:
-                    raise RuntimeError("Error reading serial port")
+                # Init packets
+                packet2send = None
+                stringa_S   = None
+                stringa_M   = None
+
+                line = serGNSS.readline().strip()
 
                 if line:
+                    packet_M, packet_S = extract_phi_M(line)
+                    master, slave      = extract_data(line)
+
+                    if packet_M:
+                        master_packets.append(packet_M)
+                    if packet_S:
+                        slave_packets.append(packet_S)
+
+                    if master != []:
+                        ii = ii + 1
+                        vect_m = master
+                        vect_m.insert(2,ii)
+                        stringa_M = ",".join(map(str,vect_m))
+                        #print("M", stringa_M)
+                    if slave != []:
+                        iii = iii + 1 
+                        vect_s = slave
+                        vect_s.insert(2, iii)
+                        stringa_S = ",".join(map(str,vect_s))
+                        #print("S", stringa_S)
+
+                    if master_packets != [] and slave_packets != []:
+                        matched_pairs, _ = match_master_slave_packets(master_packets, slave_packets)
+                        for master, slave in matched_pairs:
+                            double_diff_results, s_freq = compare_and_extract_phase(master, slave)
+
+                            if s_freq:
+                                dd_packet, sow_now, f_now = inizializzazione(double_diff_results, s_freq, sow_old, f_old)
+                                sow_old = sow_now
+                                f_old = f_now
+                                if dd_packet is not None:
+                                    i = i + 1
+                                    counter = i
+                                    dd_packet.insert(2, counter)
+                                    packet2send = ",".join(map(str,dd_packet))
+                                    npacketgnss += 1
+                                    #print(packet2send) 
+                                    #pacchettone.append(packet2send)
 
                     # Write CSV ---------------------------------------------------------------- #
                     try:
@@ -582,75 +557,63 @@ def runGNSS():
                         with open(filename, mode='a') as file:
                             # Create a writer object
                             writer(file).writerow([line.decode("utf-8").replace('\00',"")])
+                            # Send to udoo
+                        try:
+                            if packet2send is not None and  (npacketgnss%20) == 0:
+                                send_data(packet2send + "\n", ser)
+                            if stringa_M is not None:
+                                send_data(stringa_M + "\n", ser)
+                            if stringa_S is not None:
+                                send_data(stringa_S + "\n",ser)
+                        except:
+                            message = 'Failed sending data to OBC1'
+                            print(message)
+                            write_log(log_message(message), pathfb)
                     except:
                         raise RuntimeError("Failed writing csv")  
                                           
         except RuntimeError as error:
             print(error)
             write_log(log_message(message), pathfb)
-            if ser.isOpen():
+            if serGNSS.isOpen():
                 # Close port
                 print("Closing port...")
-                ser.close()
+                serGNSS.close()
             sleep(10)
             exceptions += 1 
             # Watchdog to reboot after 10 exceptions TODO: fun
-            #if exceptions == 10:
-            #    # Send info to ground
-            #    sleep(60*5)
-            #    # Reboot
-            #    message = "Automatic reboot in progress"
-            #    print(message)
-            #    write_log(log_message(message), pathfb)
-            #    reboot = commands['COMMANDS']['INNER']['REBOOT']
-            #    cmd = 'sudo %s'% reboot
-            #    os.system(cmd)
+            if exceptions == 10:
+                # TODO: Send info to ground
+                sleep(60*5)
+                # Reboot
+                message = "Automatic reboot in progress"
+                print(message)
+                write_log(log_message(message), pathfb)
+                exec_cmd(commands)
            
         except: 
             message  = "An unknown fatal error has occured"
             print(message)
             write_log(log_message(message), pathfb)
-            if ser.isOpen():
+            if serGNSS.isOpen():
                 # Close port
                 print("Closing port...")
-                ser.close()
+                serGNSS.close()
             sleep(10)
             exceptions += 1 
             # Watchdog to reboot after 10 exceptions TODO: fun
-            #if exceptions == 10:
-            #    # Send info to ground
-            #    sleep(60*5)
-            #    # Reboot
-            #    message = "Automatic reboot in progress"
-            #    print(message)
-            #    write_log(log_message(message), pathfb)
-            #    reboot = commands['COMMANDS']['INNER']['REBOOT']
-            #    cmd = 'sudo %s'% reboot
-            #    os.system(cmd)
+            if exceptions == 10:
+                # TODO: Send info to ground
+                sleep(60*5)
+                # Reboot
+                message = "Automatic reboot in progress"
+                print(message)
+                write_log(log_message(message), pathfb)
+                exec_cmd(commands)
 
-def test_uart():
-
-
-    # Set up the serial connection (adjust 'COM3' to your port and baud rate as needed)
-    ser = serial.Serial(
-        port='/dev/ttyUSB0',  # Replace with your port name
-        baudrate=9600,  # Baud rate
-        parity=serial.PARITY_NONE,
-        stopbits=serial.STOPBITS_ONE,
-        bytesize=serial.EIGHTBITS,
-        timeout=1
-    )
-
-    try:
-        # Example usage
-        send_data("Hello UART",ser)
-        sleep(1)  # Wait for a moment to ensure data is received
-        receive_data(ser)
-
-    except Exception as e:
-        print(f"Error: {e}")
-
-    finally:
-        ser.close()  # Close the serial connection
 if __name__ == '__main__':
-    runAI()
+    # Read configuration file
+    with open('/home/retina/Desktop/retinabexus/lattepanda/Input/config.yaml','r') as d: config = yaml.full_load(d)
+    # Read commands file
+    with open('/home/retina/Desktop/retinabexus/lattepanda/Input/commands.yaml','r') as d: commands = yaml.full_load(d)
+    runAI(config,commands)
